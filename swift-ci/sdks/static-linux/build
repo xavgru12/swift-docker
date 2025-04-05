@@ -40,8 +40,7 @@ $DOCKER build --build-arg OS_ARCH_SUFFIX=$OS_ARCH_SUFFIX -t static-swift-linux .
 mkdir -p products
 chmod ugo+w products
 
-chmod 777 /opt/static-swift-sdk
-
+sudo chmod 777 /opt/static-swift-sdk
 sudo rm -rf swift-* aarch64/ x86_64/ sdk_root/
 
 # Run the build
