@@ -41,7 +41,7 @@ mkdir -p products
 chmod ugo+w products
 
 sudo chmod 777 /opt/static-swift-sdk
-sudo rm -rf swift-* aarch64/ x86_64/ sdk_root/
+sudo rm -rf /opt/static-swift-sdk/swift-* /opt/static-swift-sdk/aarch64/ /opt/static-swift-sdk/x86_64/ /opt/static-swift-sdk/sdk_root/
 
 # Run the build
 $DOCKER run -it --rm \
