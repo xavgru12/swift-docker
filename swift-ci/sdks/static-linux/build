@@ -32,16 +32,20 @@ case $(arch) in
 esac
 
 # Build the Docker image
-$DOCKER build --build-arg OS_ARCH_SUFFIX=$OS_ARCH_SUFFIX -t static-swift-linux .
+$DOCKER build --build-arg OS_ARCH_SUFFIX=$OS_ARCH_SUFFIX -t static-swift-linux-test .
 
 # Check-out the sources
-scripts/fetch-source.sh --clone-with-ssh --source-dir source
+#scripts/fetch-source.sh --clone-with-ssh --source-dir source
 
 mkdir -p products
+chmod ugo+w products
+
+chmod 777 /opt/static-swift-sdk
 
 # Run the build
 $DOCKER run -it --rm \
           -v ./source:/source \
           -v ./products:/products \
-          static-swift-linux \
+          -v /opt/static-swift-sdk:/home/build-user/build \
+          static-swift-linux-test \
           /scripts/build.sh --source-dir /source --products-dir /products
