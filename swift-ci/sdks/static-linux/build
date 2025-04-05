@@ -42,6 +42,8 @@ chmod ugo+w products
 
 chmod 777 /opt/static-swift-sdk
 
+sudo rm -rf swift-_static-linux-0.0.1.artifactbundle/ aarch64/ x86_64/ sdk_root/
+
 # Run the build
 $DOCKER run -it --rm \
           -v ./source:/source \
