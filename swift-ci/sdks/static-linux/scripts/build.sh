@@ -113,7 +113,7 @@ declare_package zlib "zlib" "Zlib" "https://zlib.net"
 # Parse command line arguments
 static_linux_sdk_version=0.0.1
 sdk_name=
-archs=x86_64,aarch64
+archs=aarch64
 build_type=RelWithDebInfo
 parallel_jobs=$(($(nproc --all) + 2))
 source_dir=
