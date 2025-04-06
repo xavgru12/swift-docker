@@ -113,7 +113,7 @@ declare_package zlib "zlib" "Zlib" "https://zlib.net"
 # Parse command line arguments
 static_linux_sdk_version=0.0.1
 sdk_name=
-archs=x86_64,aarch64
+archs=aarch64
 build_type=RelWithDebInfo
 parallel_jobs=$(($(nproc --all) + 2))
 source_dir=
@@ -255,18 +255,6 @@ run export PATH="${build_dir}/cmake/install/bin:$PATH"
 quiet_popd
 run cmake --version
 
-header "Patching Musl"
-
-echo -n "Patching Musl for locale support... "
-patch=$(realpath "${resource_dir}/patches/musl.patch")
-if git -C ${source_dir}/musl apply --reverse --check "$patch" >/dev/null 2>&1; then
-    echo "already patched"
-elif git -C ${source_dir}/musl apply "$patch" >/dev/null 2>&1; then
-    echo "done"
-else
-    echo "failed"
-    exit 1
-fi
 
 for arch in $archs; do
 
@@ -309,71 +297,6 @@ EOF
     mkdir -p "$build_dir/$arch/musl" \
           "$build_dir/$arch/runtimes" \
           "$sdk_root/$arch/usr"
-
-    # -----------------------------------------------------------------------
-
-    header "Building Musl for ${arch}"
-
-    quiet_pushd "${build_dir}/$arch/musl"
-    if [[ "$BUILD_TYPE" == "Debug" ]]; then
-        maybe_debug="--enable-debug"
-    fi
-    run ${source_dir}/musl/configure \
-                  --target=$triple \
-                  --prefix=$sdk_root/usr \
-                  --disable-shared \
-                  --enable-static \
-                  --with-unwind-tables=async \
-                  $maybe_debug \
-                  CC="$cc" CXX="$cxx" AS="$as" AR="ar" RANLIB="ranlib"
-    make -j$parallel_jobs
-    make -j$parallel_jobs install
-    quiet_popd
-
-    # -----------------------------------------------------------------------
-
-    header "Modularizing Musl's headers"
-
-    python3 ${script_dir}/fixtypes.py \
-            ${source_dir}/musl/arch/${arch}/bits/alltypes.h.in \
-            ${source_dir}/musl/include/alltypes.h.in \
-            $sdk_root/usr/include/bits/musldefs.h \
-            $sdk_root/usr/include/bits/alltypes.h \
-            $sdk_root/usr/include/bits/types
-
-    quiet_pushd $sdk_root/usr/include
-    for header in $(find . -name '*.h'); do
-        echo "Fixing $header"
-        sed -i -E "s:#define[ \t]+__NEED_([_A-Za-z][_A-Za-z0-9]*):#include <bits/types/\1.h>:g;/#include <bits\/alltypes.h>/d" $header
-    done
-    mkdir -p _modules
-    for header in assert complex ctype errno fenv float inttypes iso646 \
-                         limits locale math setjmp stdalign stdarg stdatomic \
-                         stdbool stddef stdint stdio stdlib string tgmath \
-                         uchar wchar wctype; do
-        echo "Making _modules/${header}_h.h"
-        cat > _modules/${header}_h.h <<EOF
-#if !__building_module(${header}_h)
-#error "Do not include this header directly, include <${header}.h> instead"
-#endif
-#include <${header}.h>
-EOF
-    done
-    quiet_popd
-
-    # -----------------------------------------------------------------------
-
-    header "Constructing modulemap"
-
-    # Install the modulemap but *not* SwiftMusl.h
-    awk '
-/^\/\/ START SWIFT ONLY/ { ignore=1 }
-/^\/\/ END SWIFT ONLY/ { ignore=0; next }
-ignore == 0 { print }
-' \
-        "${source_dir}/swift-project/swift/stdlib/public/Platform/musl.modulemap" \
-        > "$sdk_root/usr/include/module.modulemap"
-    echo "OK"
 
     # -----------------------------------------------------------------------
 
@@ -438,25 +361,6 @@ EOF
     run ninja -j${parallel_jobs}
     run ninja -j${parallel_jobs} install
 
-    quiet_popd
-
-    # -----------------------------------------------------------------------
-
-    header "Building fts for ${arch}"
-
-    run cmake -G Ninja -S ${resource_dir}/fts -B ${build_dir}/$arch/fts \
-          -DCMAKE_TOOLCHAIN_FILE=${build_dir}/$arch/toolchain.cmake \
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-          -DCMAKE_INSTALL_PREFIX=$sdk_root/usr
-
-    quiet_pushd ${build_dir}/$arch/fts
-    run ninja -j$parallel_jobs
-    quiet_popd
-
-    header "Installing fts for ${arch}"
-
-    quiet_pushd ${build_dir}/$arch/fts
-    run ninja -j$parallel_jobs install
     quiet_popd
 
     # -----------------------------------------------------------------------
